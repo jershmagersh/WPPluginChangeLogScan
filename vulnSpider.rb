@@ -1,3 +1,25 @@
+=begin
+ 
+This little spider will collect security oriented change log data from all of the most
+popular plugins on WordPress.org.
+ 
+ Copyright (C) 2013 Joshua Reynolds
+ 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+=end
+
 #!/usr/bin/ruby
 require 'net/http'
 require 'uri'
@@ -14,7 +36,7 @@ def grabPlugins(tag)
 	uri = URI('http://wordpress.org/plugins/tags/' + tag)
 	resp = Net::HTTP.get_response(uri)
 	
-	arrPageNums = resp.body.scan(/dots.*\/span><a class="page-numbers" href="\/plugins\/tags\/widget\/page\/(.*?)"/)
+	arrPageNums = resp.body.scan(/dots.*\/span><a class="page-numbers" href="\/plugins\/tags\/.*\/page\/(.*?)"/)
 	
 	puts "Grabbing links..."
 	for i in 1..arrPageNums[0][0].to_i
@@ -29,13 +51,24 @@ def grabPlugins(tag)
 end
 
 def spiderPlugin(pluginName, uri)
-	uri = URI("http://wordpress.org/plugins/" + uri + "/changelog/")
 	
-	resp = Net::HTTP.get_response(uri)
+	finished = 0;
 	
-	arrChangeLogData = resp.body.scan(/<h4>(.*?)<\/h4>.*?<li>(.*?)<\/li>/m)
+	while finished == 0
+		begin
+			uri = URI("http://wordpress.org/plugins/" + uri + "/changelog/")
 	
-	readChangeLog(arrChangeLogData, pluginName, uri)
+			resp = Net::HTTP.get_response(uri)
+	
+			arrChangeLogData = resp.body.scan(/<h4>(.*?)<\/h4>.*?<li>(.*?)<\/li>/m)
+	
+			readChangeLog(arrChangeLogData, pluginName, uri)
+
+			finished = 1
+		rescue
+			sleep 5	
+		end
+	end
 end
 
 def readChangeLog(arrData, pluginName, uri)
@@ -62,15 +95,8 @@ def getTags
 
 	puts "Starting with the most popular: #{scanned[scanned.length-1][0]}"
 	
-	grabPlugins(scanned[scanned.length-1][0])
-	
-	puts "Keep going?"
-	answer = gets.chomp
-	
-	if answer.chomp.upcase == "Y"
-		for i in 2..scanned.length-1 
-			grabPlugins(scanned[scanned.length-i][0])
-		end
+	for i in 1..scanned.length-1 
+		grabPlugins(scanned[scanned.length-i][0])
 	end
 end
 
